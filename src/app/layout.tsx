@@ -26,12 +26,7 @@ import { Button } from '@/components/ui/button';
 import { UserProfile } from '@/components/user-profile';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+function AppContent({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
   const { user, loading } = useUser();
 
@@ -44,6 +39,55 @@ export default function RootLayout({
   }, [auth, user, loading]);
 
   return (
+    <SidebarProvider>
+      <Sidebar>
+        <SidebarHeader>
+          <Button variant="ghost" className="h-10 w-full justify-start px-2 text-lg font-bold">
+            <LayoutDashboard className="mr-2 h-5 w-5" />
+            <span className="font-headline">TaskMaster Pro</span>
+          </Button>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/tasks">
+                  <ListChecks />
+                  Tasks
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild>
+                <Link href="/audit-log">
+                  <History />
+                  Audit Log
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarContent>
+        <SidebarFooter>
+          <UserProfile />
+        </SidebarFooter>
+      </Sidebar>
+      <SidebarInset>
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:hidden">
+          <SidebarTrigger />
+          <h1 className="text-lg font-semibold font-headline">TaskMaster Pro</h1>
+        </header>
+        {children}
+      </SidebarInset>
+    </SidebarProvider>
+  );
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
     <html lang="en" className="dark">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -53,46 +97,7 @@ export default function RootLayout({
       </head>
       <body className={cn('font-body antialiased min-h-screen w-full bg-background text-foreground')}>
         <FirebaseClientProvider>
-          <SidebarProvider>
-            <Sidebar>
-              <SidebarHeader>
-                <Button variant="ghost" className="h-10 w-full justify-start px-2 text-lg font-bold">
-                  <LayoutDashboard className="mr-2 h-5 w-5" />
-                  <span className="font-headline">TaskMaster Pro</span>
-                </Button>
-              </SidebarHeader>
-              <SidebarContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <Link href="/tasks">
-                        <ListChecks />
-                        Tasks
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild>
-                      <Link href="/audit-log">
-                        <History />
-                        Audit Log
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarContent>
-              <SidebarFooter>
-                <UserProfile />
-              </SidebarFooter>
-            </Sidebar>
-            <SidebarInset>
-              <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-sm md:hidden">
-                <SidebarTrigger />
-                <h1 className="text-lg font-semibold font-headline">TaskMaster Pro</h1>
-              </header>
-              {children}
-            </SidebarInset>
-          </SidebarProvider>
+          <AppContent>{children}</AppContent>
         </FirebaseClientProvider>
         <Toaster />
       </body>
