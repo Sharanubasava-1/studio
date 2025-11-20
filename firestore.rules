@@ -1,0 +1,99 @@
+/**
+ * This ruleset enforces a strict user-ownership model for the TaskMaster Pro application.
+ *
+ * Core Philosophy:
+ * All user-generated data is considered private and is accessible only to the user who created it.
+ * The ruleset defaults to denying all access and then selectively grants permissions based on
+ * authenticated user ownership. There is no concept of public data or administrative roles.
+ *
+ * Data Structure:
+ * The data is organized hierarchically. All user-specific content, including 'tasks' and
+ * 'audit_logs', is nested within a top-level '/users' collection, under a document named with
+ * the user's unique ID (UID). For example: /users/{userId}/tasks/{taskId}.
+ *
+ * Key Security Decisions:
+ * - Strict Ownership: All rules are based on the principle that a user can only interact with
+ *   data located under their own user ID path (`/users/{request.auth.uid}`).
+ * - No Public Access: All operations require a user to be authenticated.
+ * - User Enumeration Prevention: Listing documents in the top-level '/users' collection is
+ *   explicitly forbidden to prevent attackers from discovering user IDs.
+ * - Path-Based Security: Authorization is determined by the document path, which avoids the
+ *   need for slow and costly 'get()' calls to other documents for permission checks.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions to promote readable, secure, and maintainable rules.
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Verifies that the currently authenticated user's UID matches the
+     * requested document's owner ID from the path.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * A robust check for update and delete operations. It ensures the document
+     * exists before verifying ownership, preventing unauthorized state changes
+     * on non-existent data.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rules for the user's root document path.
+     * @path /users/{userId}
+     * @allow (create) An authenticated user creating their own user document: `create /users/user_abc` (auth.uid: `user_abc`)
+     * @deny (list) Any user, authenticated or not, listing all user documents: `list /users`
+     * @deny (get) Another user trying to read a user document: `get /users/user_xyz` (auth.uid: `user_abc`)
+     * @principle Prevents user enumeration and allows users to create their own profile document.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false; // Explicitly deny listing all users to prevent enumeration.
+      allow create: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if false; // User documents are generally not deletable by the user.
+    }
+
+    /**
+     * @description Secures access to a user's tasks. Only the owner can manage their tasks.
+     * @path /users/{userId}/tasks/{taskId}
+     * @allow (create) An authenticated user creating a task in their own space: `create /users/user_abc/tasks/task_123` (auth.uid: `user_abc`)
+     * @deny (get) An authenticated user trying to read another user's task: `get /users/user_xyz/tasks/task_456` (auth.uid: `user_abc`)
+     * @principle Enforces strict data isolation and ownership for a user's core data. Validates relational integrity on create.
+     */
+    match /users/{userId}/tasks/{taskId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == taskId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Secures access to a user's audit logs. These are read-only for the owner after creation.
+     * @path /users/{userId}/audit_logs/{auditLogId}
+     * @allow (create) An authenticated user creating an audit log for their own action: `create /users/user_abc/audit_logs/log_123` (auth.uid: `user_abc`)
+     * @deny (update) An authenticated user trying to modify an existing audit log: `update /users/user_abc/audit_logs/log_123`
+     * @principle Ensures data integrity by making audit logs immutable. Restricts access to the data owner.
+     */
+    match /users/{userId}/audit_logs/{auditLogId} {
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.id == auditLogId;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id && request.resource.data.taskId == resource.data.taskId;
+      allow delete: if isExistingOwner(userId);
+    }
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "Task": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Task",
+      "type": "object",
+      "description": "Represents a task in the TaskMaster Pro application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Task entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the task."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the task."
+        },
+        "creationTimestamp": {
+          "type": "string",
+          "description": "The timestamp indicating when the task was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "description",
+        "creationTimestamp"
+      ]
+    },
+    "AuditLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AuditLog",
+      "type": "object",
+      "description": "Represents an audit log entry for task actions.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AuditLog entity."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The timestamp of the action.",
+          "format": "date-time"
+        },
+        "actionType": {
+          "type": "string",
+          "description": "The type of action performed on the task (e.g., create, update, delete)."
+        },
+        "taskId": {
+          "type": "string",
+          "description": "Reference to Task. (Relationship: AuditLog 1:N Task)"
+        },
+        "updatedContent": {
+          "type": "string",
+          "description": "A stringified JSON representing the updated content of the task."
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "actionType",
+        "taskId",
+        "updatedContent"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/tasks/{taskId}",
+        "definition": {
+          "entityName": "Task",
+          "schema": {
+            "$ref": "#/backend/entities/Task"
+          },
+          "description": "Stores tasks owned by a specific user.  Authorization is enforced by requiring that request.auth.uid == userId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "taskId",
+              "description": "The unique identifier of the task."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/audit_logs/{auditLogId}",
+        "definition": {
+          "entityName": "AuditLog",
+          "schema": {
+            "$ref": "#/backend/entities/AuditLog"
+          },
+          "description": "Stores audit logs for tasks owned by a specific user.  Authorization is enforced by requiring that request.auth.uid == userId.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            },
+            {
+              "name": "auditLogId",
+              "description": "The unique identifier of the audit log entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to securely manage tasks and their associated audit logs within the TaskMaster Pro application, while adhering to Authorization Independence and enabling secure list operations (QAPs). Each user has their own collection of tasks and audit logs, ensuring data isolation. Tasks are stored under `/users/{userId}/tasks/{taskId}` and audit logs under `/users/{userId}/audit_logs/{auditLogId}`.\n\n**Authorization Independence:**\nAuthorization is enforced at the path level. Since tasks are stored under `/users/{userId}/tasks/{taskId}`, the security rules can easily verify that `request.auth.uid == userId` to grant access. The same principle applies to audit logs, which are stored under `/users/{userId}/audit_logs/{auditLogId}`. No `get()` calls are needed to determine authorization, ensuring atomic operations and ease of debugging.\n\n**QAPs Support:**\nSince tasks are stored in separate collections for each user, listing tasks is secure and efficient. The security rules can simply check if `request.auth.uid == userId` to allow listing tasks.  Similarly, listing audit logs is also secured through path-based ownership, ensuring that only the owner can access the logs.\n\n**DBAC (Database-Based Access Control):**\nAccess control is based solely on the user's UID obtained from `request.auth.uid` and path-based ownership. No custom claims are used.  Additional roles like 'admin' could be added via a separate `/roles_admin/{uid}` collection, checked for existence. However, given the current requirements, this is not necessary.\n\n**Invariants:**\nThe path structure enforces ownership.  Timestamps are directly stored within the documents. No denormalized data is explicitly required for the features described."
+  }
+}
