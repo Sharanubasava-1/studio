@@ -60,9 +60,16 @@ export default function SignupPage() {
         }
         router.push('/tasks');
       } catch (error: any) {
+        let description = 'An unexpected error occurred.';
+        if (error.code === 'auth/weak-password') {
+          description = 'The password is too weak. Please use at least 6 characters.';
+        } else if (error.message) {
+          description = error.message;
+        }
+
         toast({
           title: 'Sign-up Failed',
-          description: error.message || 'An unexpected error occurred.',
+          description,
           variant: 'destructive',
         });
         console.error('Error signing up', error);
