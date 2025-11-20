@@ -1,6 +1,6 @@
 'use client';
 
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useTransition } from 'react';
@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const auth = useAuth();
   const { user, loading } = useUser();
   const router = useRouter();
@@ -25,18 +25,28 @@ export default function LoginPage() {
     }
   }, [user, loading, router]);
 
-  const handleLogin = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSignup = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!auth) return;
 
     const formData = new FormData(event.currentTarget);
+    const displayName = formData.get('name') as string;
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
 
-    if (!email || !password) {
+    if (!displayName || !email || !password) {
       toast({
         title: 'Error',
-        description: 'Email and password are required.',
+        description: 'All fields are required.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (password.length < 6) {
+      toast({
+        title: 'Error',
+        description: 'Password must be at least 6 characters long.',
         variant: 'destructive',
       });
       return;
@@ -44,15 +54,18 @@ export default function LoginPage() {
 
     startTransition(async () => {
       try {
-        await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        if (userCredential.user) {
+            await updateProfile(userCredential.user, { displayName });
+        }
         router.push('/tasks');
       } catch (error: any) {
         toast({
-          title: 'Login Failed',
+          title: 'Sign-up Failed',
           description: error.message || 'An unexpected error occurred.',
           variant: 'destructive',
         });
-        console.error('Error signing in', error);
+        console.error('Error signing up', error);
       }
     });
   };
@@ -65,11 +78,15 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
-          <CardDescription>Enter your credentials to access your account</CardDescription>
+          <CardTitle className="text-2xl font-headline">Create an Account</CardTitle>
+          <CardDescription>Enter your details to get started</CardDescription>
         </CardHeader>
-        <form onSubmit={handleLogin}>
+        <form onSubmit={handleSignup}>
           <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input id="name" name="name" type="text" placeholder="John Doe" required disabled={isPending} />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" name="email" type="email" placeholder="m@example.com" required disabled={isPending} />
@@ -81,12 +98,12 @@ export default function LoginPage() {
           </CardContent>
           <CardFooter className="flex-col gap-4">
             <Button className="w-full" type="submit" disabled={isPending}>
-              {isPending ? 'Signing In...' : 'Sign In'}
+              {isPending ? 'Creating Account...' : 'Create Account'}
             </Button>
-             <div className="text-sm text-muted-foreground">
-              Don&apos;t have an account?{' '}
-              <Link href="/signup" className="text-primary underline-offset-4 hover:underline">
-                Sign up
+            <div className="text-sm text-muted-foreground">
+              Already have an account?{' '}
+              <Link href="/login" className="text-primary underline-offset-4 hover:underline">
+                Sign in
               </Link>
             </div>
           </CardFooter>
