@@ -1,6 +1,11 @@
-import type { Metadata } from 'next';
+
+'use client';
+
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { History, LayoutDashboard, ListChecks } from 'lucide-react';
+import { useAuth, useUser } from '@/firebase';
+import { signInAnonymously } from 'firebase/auth';
 
 import './globals.css';
 import { cn } from '@/lib/utils';
@@ -21,16 +26,23 @@ import { Button } from '@/components/ui/button';
 import { UserProfile } from '@/components/user-profile';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
-export const metadata: Metadata = {
-  title: 'TaskMaster Pro',
-  description: 'Manage your tasks with ease.',
-};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const auth = useAuth();
+  const { user, loading } = useUser();
+
+  useEffect(() => {
+    if (auth && !user && !loading) {
+      signInAnonymously(auth).catch((error) => {
+        console.error("Anonymous sign-in failed", error);
+      });
+    }
+  }, [auth, user, loading]);
+
   return (
     <html lang="en" className="dark">
       <head>
