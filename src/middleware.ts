@@ -1,9 +1,22 @@
+
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-// This middleware is no longer needed as we are using Firebase Authentication.
-// You can remove this file if you no longer need it.
+const protectedRoutes = ['/tasks', '/audit-log', '/profile'];
+
 export function middleware(req: NextRequest) {
+  const token = req.cookies.get('firebase-auth-token');
+  const { pathname } = req.nextUrl;
+
+  if (!token && protectedRoutes.some(p => pathname.startsWith(p))) {
+    const loginUrl = new URL('/login', req.url);
+    return NextResponse.redirect(loginUrl);
+  }
+  
+  if (token && pathname === '/login') {
+    return NextResponse.redirect(new URL('/tasks', req.url));
+  }
+
   return NextResponse.next();
 }
 
