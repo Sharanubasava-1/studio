@@ -1,26 +1,37 @@
-import { Suspense } from 'react';
-import { getTasks } from '@/lib/data';
-import TasksPageClient from './components/tasks-page-client';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Suspense } from "react";
+import { getTasks } from "@/lib/data";
+import TasksPageClient from "./components/tasks-page-client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const revalidate = 0;
 
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams?: {
+  // 👇 In Next 15, searchParams is a Promise
+  searchParams: Promise<{
     query?: string;
     page?: string;
-  };
+  }>;
 }) {
-  const query = searchParams?.query || '';
-  const currentPage = Number(searchParams?.page) || 1;
-  const { tasks, totalTasks } = await getTasks({ query, page: currentPage, limit: 5 });
+  // 👇 You must await it before using its properties
+  const params = await searchParams;
+
+  const query = params?.query ?? "";
+  const currentPage = Number(params?.page ?? "1") || 1;
+
+  const { tasks, totalTasks } = await getTasks({
+    query,
+    page: currentPage,
+    limit: 5,
+  });
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
       <div className="flex items-center">
-        <h1 className="text-lg font-semibold md:text-2xl font-headline">Tasks</h1>
+        <h1 className="text-lg font-semibold md:text-2xl font-headline">
+          Tasks
+        </h1>
       </div>
       <Suspense fallback={<TasksSkeleton />}>
         <TasksPageClient tasks={tasks} totalTasks={totalTasks} />
@@ -47,13 +58,13 @@ function TasksSkeleton() {
           </div>
         ))}
       </div>
-       <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-24" />
-          <div className="flex gap-2">
-            <Skeleton className="h-8 w-20" />
-            <Skeleton className="h-8 w-20" />
-          </div>
+      <div className="flex items-center justify-between">
+        <Skeleton className="h-8 w-24" />
+        <div className="flex gap-2">
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-8 w-20" />
         </div>
+      </div>
     </div>
   );
 }

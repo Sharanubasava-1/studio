@@ -1,9 +1,9 @@
 export interface Task {
-  id: string;
+  id: number;              // was string
   title: string;
   description: string;
   createdAt: Date;
-  updatedAt: Date;
+  updatedAt?: Date;        // make optional, since DB doesn’t store it
 }
 
 export type AuditLogAction = 'CREATE_TASK' | 'UPDATE_TASK' | 'DELETE_TASK';

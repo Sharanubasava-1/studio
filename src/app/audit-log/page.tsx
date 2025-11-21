@@ -1,18 +1,31 @@
-import { getAuditLogs } from '@/lib/data';
-import { AuditLogTable } from './components/audit-log-table';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { getAuditLogs } from "@/lib/data";
+import { AuditLogTable } from "./components/audit-log-table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export const revalidate = 0;
 
 export default async function AuditLogPage({
   searchParams,
 }: {
-  searchParams?: {
+  // 👇 Next 15: searchParams is a Promise
+  searchParams: Promise<{
     page?: string;
-  };
+  }>;
 }) {
-  const currentPage = Number(searchParams?.page) || 1;
-  const { logs, totalLogs } = await getAuditLogs({ page: currentPage, limit: 10 });
+  // 👇 must await it before using .page
+  const params = await searchParams;
+
+  const currentPage = Number(params?.page ?? "1") || 1;
+  const { logs, totalLogs } = await getAuditLogs({
+    page: currentPage,
+    limit: 10,
+  });
 
   return (
     <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
